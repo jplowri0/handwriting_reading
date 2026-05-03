@@ -25,7 +25,7 @@ import requests
 # Default paths
 DEFAULT_INBOX = Path.home() / "Desktop" / "inbox"
 DEFAULT_OUTPUT = Path.home() / "Desktop" / "outbox"
-DEFAULT_MODEL = "qwen3.5:27b"
+DEFAULT_MODEL = "qwen3-vl:32b"
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
 
 # Image settings
@@ -55,27 +55,20 @@ Always output in this exact structure:
 
 ---
 
-## Highlights
+## Keywords
 
-| Colour | Category | Theme | Text |
-|--------|----------|-------|------|
-{{Extract highlighted text from the image and categorise as follows:}}
+{{List of keywords from the Known Keywords list that are relevant to this note. Format each as a wikilink on its own line, prefixed with a dash.}}
+
+---
+
+## Suggested Keywords
+
+{{If the note touches on themes NOT covered by the Known Keywords list, suggest new keywords here. Use the same `[[kebab-case]]` wikilink format. Include a short description for each. If no new keywords are needed, write "None."}}
 ```
 
-## Highlight Categories
+## Known Keywords
 
-Identify highlighted/marked text by colour and assign categories:
-
-| Highlight Colour | Category | Theme Column |
-|------------------|----------|--------------|
-| PINK (Negative) | My Error | Assign a theme from the theme list |
-| YELLOW (Positive) | What I can do to do better | Assign a theme from the theme list |
-| ORANGE | Generic Keywords | Leave blank |
-| GREEN | People | Leave blank |
-
-## Theme List (for PINK/Negative and YELLOW/Positive only)
-
-Choose the most appropriate theme:
+Scan the transcription and assign any of these keywords that are relevant to the content:
 
 - `[[anticipate-needs]]` — Predicting what others will need
 - `[[empathy-check]]` — Checking in on others' emotional state
@@ -93,8 +86,6 @@ Choose the most appropriate theme:
 - `[[follow-through]]` — Completing what you said you'd do
 - `[[boundary-setting]]` — Setting limits with others
 
-If none fit, create a new theme in the same `[[kebab-case]]` format.
-
 ## Rules
 
 1. Transcribe exactly what is written — do not correct spelling or grammar
@@ -102,10 +93,9 @@ If none fit, create a new theme in the same `[[kebab-case]]` format.
 3. If you cannot read a word, use [illegible]
 4. For journal entries, note the mood score if present (e.g., "= +2", "= -1", "= 0")
 5. If multiple entries exist on one page, separate them with **Entry 1**, **Entry 2**, etc.
-6. Only include highlights that are visibly marked/highlighted in the image
-7. For ORANGE highlights, leave the Theme column empty
-8. For GREEN highlights (People), format names as wikilinks: [[Name]]
-9. For PINK and YELLOW highlights, always assign a theme
+6. Only assign keywords that genuinely relate to the content — do not force-fit
+7. For people mentioned by name, format as wikilinks inline in the transcription: [[Name]]
+8. Suggested keywords should only be added when the note clearly covers a theme not in the Known Keywords list
 
 ## Example Output
 
@@ -116,23 +106,28 @@ If none fit, create a new theme in the same `[[kebab-case]]` format.
 
 = +1 Went to gym this morning felt good. This is going to be something that must be done so I dont rot away.
 
+Talked to [[Dr Sata]] about Manjaro at work.
+
 ---
 
 ## Summary
 
 - Gym session in the morning, felt positive
 - Recognising exercise as essential for wellbeing
+- Brief work conversation about Manjaro Linux
 
 ---
 
-## Highlights
+## Keywords
 
-| Colour | Category | Theme | Text |
-|--------|----------|-------|------|
-| PINK | My Error | [[time-management]] | "I did lose track of time" |
-| YELLOW | What I can do to do better | [[proactive-action]] | "I knew I had to do it straight away" |
-| ORANGE | Generic Keywords | | "Manjaro" |
-| GREEN | People | | [[Dr Sata]] |
+- [[self-care]]
+- [[energy-management]]
+
+---
+
+## Suggested Keywords
+
+- [[physical-fitness]] — Committing to regular exercise as a health priority
 ```
 
 ---

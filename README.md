@@ -1,12 +1,12 @@
 # Handwriting Transcription Skill
 
-Transcribe handwritten notes from images using a local Qwen 2.5-VL model via Ollama. Outputs structured Markdown with categorised highlights.
+Transcribe handwritten notes from images using a local Qwen 3-VL model via Ollama. Outputs structured Markdown with automatic keyword tagging.
 
 ## Features
 
 - **Verbatim transcription** of handwritten text
-- **Highlight categorisation** by colour (Pink/Yellow/Orange/Green)
-- **Theme tagging** for personal development tracking
+- **Automatic keyword tagging** from a known keyword list
+- **Suggested keywords** for themes not in the known list
 - **Batch processing** for multi-page notes
 - **Inbox watcher** for automatic processing
 - **Fully local** — no cloud APIs required
@@ -22,7 +22,7 @@ brew install ollama
 # Or download from https://ollama.ai
 
 # Pull the vision model
-ollama pull qwen2.5vl:32b
+ollama pull qwen3-vl:32b
 
 # Start Ollama server (if not already running)
 ollama serve
@@ -110,6 +110,8 @@ Each transcription produces a Markdown file like this:
 
 = +1 Had a great morning with the kids...
 
+Talked to [[Dr Sata]] about the project.
+
 ---
 
 ## Summary
@@ -120,28 +122,22 @@ Each transcription produces a Markdown file like this:
 
 ---
 
-## Highlights
+## Keywords
 
-| Colour | Category | Theme | Text |
-|--------|----------|-------|------|
-| PINK | My Error | [[time-management]] | "I lost track of time" |
-| YELLOW | What I can do to do better | [[proactive-action]] | "Did the task before being asked" |
-| ORANGE | Generic Keywords | | "Manjaro" |
-| GREEN | People | | "Dr Sata" |
+- [[self-care]]
+- [[presence-with-kids]]
+- [[energy-management]]
+
+---
+
+## Suggested Keywords
+
+- [[physical-fitness]] — Committing to regular exercise as a health priority
 ```
 
-## Highlight Categories
+## Known Keywords
 
-| Colour | Category | Theme Required |
-|--------|----------|----------------|
-| PINK (Negative) | My Error | Yes |
-| YELLOW (Positive) | What I can do to do better | Yes |
-| ORANGE | Generic Keywords | No |
-| GREEN | People | No |
-
-## Available Themes
-
-For PINK and YELLOW highlights:
+The model assigns relevant keywords from this list:
 
 - `[[anticipate-needs]]` — Predicting what others will need
 - `[[empathy-check]]` — Checking in on others' emotional state
@@ -159,6 +155,8 @@ For PINK and YELLOW highlights:
 - `[[follow-through]]` — Completing what you said you'd do
 - `[[boundary-setting]]` — Setting limits with others
 
+When the note covers a theme not in this list, the model suggests new keywords in `[[kebab-case]]` format with a short description.
+
 ## Configuration
 
 Edit the defaults in `scripts/transcribe.py`:
@@ -166,7 +164,7 @@ Edit the defaults in `scripts/transcribe.py`:
 ```python
 DEFAULT_INBOX = Path.home() / "Desktop" / "inbox"
 DEFAULT_OUTPUT = Path.home() / "Desktop" / "outbox"
-DEFAULT_MODEL = "qwen2.5vl:32b"
+DEFAULT_MODEL = "qwen3-vl:32b"
 ```
 
 Or use command-line arguments:
@@ -175,7 +173,7 @@ Or use command-line arguments:
 python scripts/transcribe.py \
     --inbox ~/Documents/notes/inbox \
     --output ~/Documents/notes/outbox \
-    --model qwen2.5vl:72b
+    --model qwen3-vl:72b
 ```
 
 ## Troubleshooting
@@ -197,7 +195,7 @@ ollama serve
 ollama list
 
 # Pull the model
-ollama pull qwen2.5vl:32b
+ollama pull qwen3-vl:32b
 ```
 
 ### Poor transcription quality
@@ -218,16 +216,17 @@ ollama pull qwen2.5vl:32b
 The output Markdown files are designed to work with Obsidian and Zettelkasten workflows:
 
 1. Set `--output` to your Obsidian vault folder
-2. Theme tags like `[[time-management]]` become wikilinks
-3. Create MOC (Map of Content) notes for themes
-4. Use Dataview to query highlights across notes
+2. Keywords like `[[time-management]]` become wikilinks
+3. People names are formatted as `[[Name]]` wikilinks
+4. Create MOC (Map of Content) notes for keywords
+5. Use Dataview to query keywords across notes
 
-Example Dataview query for all errors:
+Example Dataview query for self-care entries:
 
 ```dataview
-TABLE Colour, Theme, Text
+LIST
 FROM "journal"
-WHERE contains(file.content, "| PINK |")
+WHERE contains(file.content, "[[self-care]]")
 ```
 
 ## Files

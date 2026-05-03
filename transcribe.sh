@@ -10,13 +10,13 @@
 #
 # Setup:
 #   1. Ensure Ollama is running: ollama serve
-#   2. Pull the model: ollama pull qwen2.5vl:32b
+#   2. Pull the model: ollama pull qwen3-vl:32b
 #   3. Place images in ~/Desktop/inbox/
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INBOX="${HOME}/Desktop/inbox"
 OUTPUT="${HOME}/Desktop/outbox"
-MODEL="qwen3.5:27b"
+MODEL="qwen3-vl:32b"
 PYTHON="${SCRIPT_DIR}/venv/bin/python3"
 
 # Fall back to system python if venv doesn't exist

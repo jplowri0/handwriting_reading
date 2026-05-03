@@ -31,11 +31,12 @@ def combine_transcriptions(transcriptions: List[str], title: str) -> str:
     """
     Combine multiple transcriptions into a single Markdown document.
     
-    Merges the Transcription sections and combines Highlights tables.
+    Merges the Transcription sections and combines Keywords/Suggested Keywords.
     """
     all_transcriptions = []
     all_summaries = []
-    all_highlights = []
+    all_keywords = set()
+    all_suggested_keywords = []
     
     for i, text in enumerate(transcriptions, 1):
         lines = text.strip().split("\n")
@@ -43,9 +44,6 @@ def combine_transcriptions(transcriptions: List[str], title: str) -> str:
         current_section = None
         transcription_lines = []
         summary_lines = []
-        highlight_lines = []
-        in_table = False
-        table_header_seen = False
         
         for line in lines:
             # Detect section headers
@@ -55,8 +53,11 @@ def combine_transcriptions(transcriptions: List[str], title: str) -> str:
             elif line.strip() == "## Summary":
                 current_section = "summary"
                 continue
-            elif line.strip() == "## Highlights":
-                current_section = "highlights"
+            elif line.strip() == "## Keywords":
+                current_section = "keywords"
+                continue
+            elif line.strip() == "## Suggested Keywords":
+                current_section = "suggested_keywords"
                 continue
             elif line.startswith("# "):
                 # Skip the title line
@@ -69,19 +70,14 @@ def combine_transcriptions(transcriptions: List[str], title: str) -> str:
                 transcription_lines.append(line)
             elif current_section == "summary":
                 summary_lines.append(line)
-            elif current_section == "highlights":
-                # Skip table header rows after the first transcription
-                if line.startswith("|") and "Colour" in line:
-                    if not table_header_seen:
-                        table_header_seen = True
-                        highlight_lines.append(line)
-                    continue
-                elif line.startswith("|") and "---" in line:
-                    if len(highlight_lines) == 1:  # Only add separator once
-                        highlight_lines.append(line)
-                    continue
-                elif line.startswith("|"):
-                    highlight_lines.append(line)
+            elif current_section == "keywords":
+                stripped = line.strip()
+                if stripped.startswith("- "):
+                    all_keywords.add(stripped)
+            elif current_section == "suggested_keywords":
+                stripped = line.strip()
+                if stripped.startswith("- ") and stripped not in all_suggested_keywords:
+                    all_suggested_keywords.append(stripped)
         
         # Add page marker if multiple pages
         if len(transcriptions) > 1:
@@ -90,25 +86,25 @@ def combine_transcriptions(transcriptions: List[str], title: str) -> str:
         all_transcriptions.append("")
         
         all_summaries.extend(summary_lines)
-        all_highlights.extend(highlight_lines)
     
     # Build combined document
     output = [f"# {title}", "", "## Transcription", ""]
     output.extend(all_transcriptions)
     output.extend(["---", "", "## Summary", ""])
     output.extend(all_summaries)
-    output.extend(["---", "", "## Highlights", ""])
+    output.extend(["---", "", "## Keywords", ""])
     
-    # Ensure we have table headers
-    if all_highlights:
-        # Check if headers exist
-        has_header = any("Colour" in line for line in all_highlights)
-        if not has_header:
-            output.append("| Colour | Category | Theme | Text |")
-            output.append("|--------|----------|-------|------|")
-        output.extend(all_highlights)
+    if all_keywords:
+        output.extend(sorted(all_keywords))
     else:
-        output.append("*No highlighted text in this note.*")
+        output.append("*No keywords identified.*")
+    
+    output.extend(["", "---", "", "## Suggested Keywords", ""])
+    
+    if all_suggested_keywords:
+        output.extend(all_suggested_keywords)
+    else:
+        output.append("None.")
     
     return "\n".join(output)
 

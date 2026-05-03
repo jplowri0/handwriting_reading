@@ -1,16 +1,16 @@
 ---
 name: handwriting-transcription
-description: Transcribe handwritten notes from images using a local Qwen 2.5-VL model via Ollama. Use this skill when the user wants to process handwritten journal entries, notes, or any handwriting stored in ~/Desktop/inbox. Triggers on phrases like "transcribe my notes", "process inbox", "transcribe handwriting", "journal transcription", or when images need OCR with structured Markdown output including highlights categorisation.
+description: Transcribe handwritten notes from images using a local Qwen 3-VL model via Ollama. Use this skill when the user wants to process handwritten journal entries, notes, or any handwriting stored in ~/Desktop/inbox. Triggers on phrases like "transcribe my notes", "process inbox", "transcribe handwriting", "journal transcription", or when images need OCR with structured Markdown output including automatic keyword tagging.
 ---
 
 # Handwriting Transcription Skill
 
-This skill processes handwritten note images from `~/Desktop/inbox` using a local Qwen 2.5-VL (26B) model running via Ollama, and outputs structured Markdown transcriptions.
+This skill processes handwritten note images from `~/Desktop/inbox` using a local Qwen 3-VL (32B) model running via Ollama, and outputs structured Markdown transcriptions.
 
 ## Prerequisites
 
 - **Ollama** installed and running locally
-- **Qwen 2.5-VL model** pulled: `ollama pull qwen2.5vl:32b` (or your specific variant)
+- **Qwen 3-VL model** pulled: `ollama pull qwen3-vl:32b`
 - **Python 3.8+** with `requests` and `base64` modules (standard library)
 - Images placed in `~/Desktop/inbox/`
 
@@ -34,7 +34,7 @@ python scripts/transcribe.py --image ~/Desktop/inbox/note.png --title "20260301_
 - `--output` — Output folder for Markdown files (default: `~/Desktop/outbox`)
 - `--image` — Process a single specific image
 - `--title` — Custom title for the note (default: derived from filename)
-- `--model` — Ollama model name (default: `qwen2.5vl:32b`)
+- `--model` — Ollama model name (default: `qwen3-vl:32b`)
 
 ## Output Format
 
@@ -42,18 +42,19 @@ Each transcription produces a Markdown file with:
 
 1. **Transcription** — Verbatim text from handwriting
 2. **Summary** — Contextual bullet points
-3. **Highlights** — Table categorising marked/highlighted text:
-   - **PINK/Negative** → "My Error" + Theme tag
-   - **YELLOW/Positive** → "What I can do to do better" + Theme tag
-   - **ORANGE** → "Generic Keywords"
-   - **GREEN** → "People"
+3. **Keywords** — Automatically identified keywords from a known list, formatted as `[[wikilinks]]`
+4. **Suggested Keywords** — New keywords the model identifies that aren't in the known list
 
-## Highlight Themes
+## Known Keywords
 
-For PINK and YELLOW highlights, the model assigns themes like:
-- `[[time-management]]`, `[[emotional-regulation]]`, `[[parenting-patience]]`
-- `[[proactive-action]]`, `[[self-care]]`, `[[communication-tone]]`
-- And more (see full list in prompt)
+The model assigns relevant keywords from:
+- `[[anticipate-needs]]`, `[[empathy-check]]`, `[[energy-management]]`
+- `[[proactive-action]]`, `[[parenting-patience]]`, `[[self-care]]`
+- `[[presence-with-kids]]`, `[[humility-and-repair]]`, `[[pause-before-reacting]]`
+- `[[communication-tone]]`, `[[time-management]]`, `[[apology-calibration]]`
+- `[[emotional-regulation]]`, `[[follow-through]]`, `[[boundary-setting]]`
+
+The model will also suggest new keywords in `[[kebab-case]]` format when the note covers themes outside this list.
 
 ## Workflow
 
@@ -65,5 +66,5 @@ For PINK and YELLOW highlights, the model assigns themes like:
 ## Troubleshooting
 
 - **Ollama not responding**: Ensure Ollama is running (`ollama serve`)
-- **Model not found**: Pull the model first (`ollama pull qwen2.5vl:32b`)
+- **Model not found**: Pull the model first (`ollama pull qwen3-vl:32b`)
 - **Poor transcription**: Ensure images are well-lit, high contrast, and not too large (resize if needed)
