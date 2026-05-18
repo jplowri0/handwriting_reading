@@ -33,109 +33,41 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 MAX_IMAGE_DIMENSION = 2048  # Resize images larger than this
 MAX_FILE_SIZE_MB = 10  # Warn if file larger than this
 
-# The transcription prompt template
-TRANSCRIPTION_PROMPT = """You are a handwriting transcription assistant. Your task is to transcribe handwritten notes from images and output structured Markdown.
+# Prompt files — live alongside this script by default
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_PROMPT_FILE = SCRIPT_DIR / "prompt.txt"
+DEFAULT_SIMPLE_PROMPT_FILE = SCRIPT_DIR / "prompt_simple.txt"
 
-## Output Format
 
-Always output in this exact structure:
+def load_prompt(prompt_path: Path, required: bool = True) -> Optional[str]:
+    """
+    Load a prompt template from an external file.
 
-```markdown
-# {title}
+    The file should contain a `{title}` placeholder that will be substituted
+    at runtime.
 
-## Transcription
+    If required=True (default), exits on missing file. If False, returns None.
+    """
+    if not prompt_path.exists():
+        if required:
+            print(f"ERROR: Prompt file not found: {prompt_path}")
+            print(f"  Create it or specify a path with --prompt")
+            sys.exit(1)
+        return None
 
-{{Verbatim transcription of the handwriting. Use ~~strikethrough~~ for crossed-out words. Use **bold** for underlined text. Preserve line breaks where meaningful.}}
+    try:
+        text = prompt_path.read_text(encoding="utf-8")
+    except Exception as e:
+        if required:
+            print(f"ERROR: Could not read prompt file: {e}")
+            sys.exit(1)
+        return None
 
----
+    if "{title}" not in text:
+        print(f"WARNING: {prompt_path.name} does not contain a {{title}} placeholder.")
+        print(f"  The note title will not be injected into the prompt.")
 
-## Summary
-
-{{2-5 bullet points or short paragraphs contextualising what the note is about. Add interpretation where helpful.}}
-
----
-
-## Keywords
-
-{{List of keywords from the Known Keywords list that are relevant to this note. Format each as a wikilink on its own line, prefixed with a dash.}}
-
----
-
-## Suggested Keywords
-
-{{If the note touches on themes NOT covered by the Known Keywords list, suggest new keywords here. Use the same `[[kebab-case]]` wikilink format. Include a short description for each. If no new keywords are needed, write "None."}}
-```
-
-## Known Keywords
-
-Scan the transcription and assign any of these keywords that are relevant to the content:
-
-- `[[anticipate-needs]]` — Predicting what others will need
-- `[[empathy-check]]` — Checking in on others' emotional state
-- `[[energy-management]]` — Managing energy levels, avoiding burnout
-- `[[proactive-action]]` — Doing things before being asked
-- `[[parenting-patience]]` — Staying calm with kids
-- `[[self-care]]` — Taking breaks, looking after yourself
-- `[[presence-with-kids]]` — Quality time and connection with children
-- `[[humility-and-repair]]` — Admitting mistakes, apologising
-- `[[pause-before-reacting]]` — Not reacting impulsively
-- `[[communication-tone]]` — Being mindful of tone
-- `[[time-management]]` — Keeping track of time and commitments
-- `[[apology-calibration]]` — Knowing when to apologise and when to stop
-- `[[emotional-regulation]]` — Managing own emotions, maintaining composure
-- `[[follow-through]]` — Completing what you said you'd do
-- `[[boundary-setting]]` — Setting limits with others
-
-## Rules
-
-1. Transcribe exactly what is written — do not correct spelling or grammar
-2. If text is crossed out, wrap it in ~~strikethrough~~
-3. If you cannot read a word, use [illegible]
-4. For journal entries, note the mood score if present (e.g., "= +2", "= -1", "= 0")
-5. If multiple entries exist on one page, separate them with **Entry 1**, **Entry 2**, etc.
-6. Only assign keywords that genuinely relate to the content — do not force-fit
-7. For people mentioned by name, format as wikilinks inline in the transcription: [[Name]]
-8. Suggested keywords should only be added when the note clearly covers a theme not in the Known Keywords list
-
-## Example Output
-
-```markdown
-# 20260218_Journal
-
-## Transcription
-
-= +1 Went to gym this morning felt good. This is going to be something that must be done so I dont rot away.
-
-Talked to [[Dr Sata]] about Manjaro at work.
-
----
-
-## Summary
-
-- Gym session in the morning, felt positive
-- Recognising exercise as essential for wellbeing
-- Brief work conversation about Manjaro Linux
-
----
-
-## Keywords
-
-- [[self-care]]
-- [[energy-management]]
-
----
-
-## Suggested Keywords
-
-- [[physical-fitness]] — Committing to regular exercise as a health priority
-```
-
----
-
-Now transcribe the image I provide. The title for this note is: {title}
-
-IMPORTANT: Output ONLY the Markdown content. Do not include any preamble, explanation, or commentary before or after the Markdown.
-"""
+    return text
 
 
 def get_image_dimensions(image_path: Path) -> tuple[int, int]:
@@ -223,12 +155,16 @@ def call_ollama_vision(
     image_path: Path,
     title: str,
     model: str = DEFAULT_MODEL,
+    prompt_template: Optional[str] = None,
 ) -> Optional[str]:
     """
     Call Ollama's vision model API with an image and prompt.
     
     Returns the generated text response or None if failed.
     """
+    if prompt_template is None:
+        prompt_template = load_prompt(DEFAULT_PROMPT_FILE)
+
     # Resize image if needed
     processed_path = resize_image_if_needed(image_path)
     resized = processed_path != image_path
@@ -243,7 +179,7 @@ def call_ollama_vision(
         image_base64 = encode_image_to_base64(processed_path)
         
         # Build the prompt
-        prompt = TRANSCRIPTION_PROMPT.format(title=title)
+        prompt = prompt_template.format(title=title)
         
         # Prepare the API request
         payload = {
@@ -360,9 +296,14 @@ def process_image(
     output_dir: Path,
     title: Optional[str] = None,
     model: str = DEFAULT_MODEL,
+    prompt_template: Optional[str] = None,
+    fallback_prompt: Optional[str] = None,
 ) -> bool:
     """
     Process a single image file.
+    
+    If the primary prompt fails and a fallback_prompt is provided, retries
+    with the simpler prompt.
     
     Returns True if successful, False otherwise.
     """
@@ -375,7 +316,12 @@ def process_image(
     print(f"  Title: {title}")
     
     # Call the vision model
-    response = call_ollama_vision(image_path, title, model)
+    response = call_ollama_vision(image_path, title, model, prompt_template)
+    
+    # Retry with fallback prompt if primary failed
+    if not response and fallback_prompt:
+        print(f"  Retrying with simple prompt...")
+        response = call_ollama_vision(image_path, title, model, fallback_prompt)
     
     if not response:
         print(f"  FAILED: No response from model")
@@ -450,8 +396,35 @@ def main():
         default=DEFAULT_MODEL,
         help=f"Ollama model name (default: {DEFAULT_MODEL})",
     )
+    parser.add_argument(
+        "--prompt",
+        type=Path,
+        default=DEFAULT_PROMPT_FILE,
+        help=f"Path to prompt template file (default: {DEFAULT_PROMPT_FILE})",
+    )
+    parser.add_argument(
+        "--prompt-simple",
+        type=Path,
+        default=DEFAULT_SIMPLE_PROMPT_FILE,
+        dest="prompt_simple",
+        help=f"Path to fallback prompt for retries (default: {DEFAULT_SIMPLE_PROMPT_FILE})",
+    )
+    parser.add_argument(
+        "--no-fallback",
+        action="store_true",
+        dest="no_fallback",
+        help="Disable fallback retry with simple prompt",
+    )
     
     args = parser.parse_args()
+    
+    # Load prompt templates once
+    prompt_template = load_prompt(args.prompt)
+    fallback_prompt = None
+    if not args.no_fallback:
+        fallback_prompt = load_prompt(args.prompt_simple, required=False)
+        if fallback_prompt:
+            print(f"Fallback prompt: {args.prompt_simple}")
     
     # Process single image if specified
     if args.image:
@@ -459,7 +432,7 @@ def main():
             print(f"ERROR: Image not found: {args.image}")
             sys.exit(1)
         
-        success = process_image(args.image, args.output, args.title, args.model)
+        success = process_image(args.image, args.output, args.title, args.model, prompt_template, fallback_prompt)
         sys.exit(0 if success else 1)
     
     # Process all images in inbox
@@ -477,7 +450,7 @@ def main():
     failed = 0
     
     for image_path in images:
-        if process_image(image_path, args.output, args.title, args.model):
+        if process_image(image_path, args.output, args.title, args.model, prompt_template, fallback_prompt):
             successful += 1
         else:
             failed += 1

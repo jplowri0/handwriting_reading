@@ -1,0 +1,15 @@
+Transcribe the handwritten text in this image exactly as written.
+
+Rules:
+- Output Markdown only, no preamble or commentary
+- Use ~~strikethrough~~ for crossed-out words
+- Use [illegible] for unreadable words
+- Preserve line breaks where meaningful
+
+Output format:
+
+# {title}
+
+## Transcription
+
+(your transcription here)
